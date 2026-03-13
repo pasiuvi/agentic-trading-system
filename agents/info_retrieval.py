@@ -1,18 +1,19 @@
 # agents/info_retrieval.py
-# PURPOSE: Information Retrieval Agent — fetches news and scores sentiment
+# PURPOSE: Information Retrieval Agent - fetches news and scores sentiment
+#          ENHANCED: uses VADER NLP for proper sentiment scoring
 # USAGE:   Imported by orchestrator.py
 
 import feedparser
 import requests
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 class InfoRetrievalAgent:
     """
-    This agent fetches the latest news headlines for a stock/crypto
-    and scores them as POSITIVE, NEGATIVE, or NEUTRAL.
-    This represents the 'information retrieval from internet' requirement.
+    Fetches latest news headlines for a stock/crypto symbol
+    and scores them using VADER (Valence Aware Dictionary and sEntiment Reasoner).
+    VADER is designed specifically for social media and financial text.
     """
 
-    # Yahoo Finance RSS feeds for each symbol
     NEWS_FEEDS = {
         'AAPL':    'https://finance.yahoo.com/rss/headline?s=AAPL',
         'MSFT':    'https://finance.yahoo.com/rss/headline?s=MSFT',
@@ -21,63 +22,49 @@ class InfoRetrievalAgent:
         'ETH-USD': 'https://finance.yahoo.com/rss/headline?s=ETH-USD',
     }
 
-    # Words that suggest positive news
-    POSITIVE_WORDS = [
-        'surge', 'gain', 'rally', 'profit', 'beat', 'rise', 'up',
-        'growth', 'record', 'high', 'strong', 'buy', 'upgrade',
-        'bullish', 'recovery', 'positive', 'exceed', 'outperform'
-    ]
-
-    # Words that suggest negative news
-    NEGATIVE_WORDS = [
-        'fall', 'drop', 'loss', 'miss', 'crash', 'down', 'risk',
-        'decline', 'bearish', 'warn', 'weak', 'sell', 'downgrade',
-        'negative', 'below', 'concern', 'fear', 'uncertainty', 'cut'
-    ]
+    def __init__(self):
+        # VADER analyser - no API key needed, works offline
+        self.analyser = SentimentIntensityAnalyzer()
 
     def get_news_headlines(self, symbol, max_headlines=15):
-        """Fetches recent news headlines for the symbol. Returns a list of strings."""
+        """Fetches recent news headlines. Returns a list of strings."""
         url = self.NEWS_FEEDS.get(symbol, '')
         headlines = []
-
         if not url:
-            print(f'    No RSS feed for {symbol}')
+            print(f'  No RSS feed configured for {symbol}')
             return headlines
-
         try:
             feed = feedparser.parse(url)
             for entry in feed.entries[:max_headlines]:
                 headlines.append(entry.title)
         except Exception as e:
-            print(f'    Could not fetch news for {symbol}: {e}')
-
+            print(f'  Could not fetch news for {symbol}: {e}')
         return headlines
 
     def score_sentiment(self, headlines):
         """
-        Counts positive and negative words across all headlines.
-        Returns: sentiment string and score dict
+        Uses VADER to score each headline on a scale from -1 (very negative)
+        to +1 (very positive). The compound score is the overall sentiment.
         """
-        pos_count = 0
-        neg_count = 0
-
+        if not headlines:
+            return 'NEUTRAL', {'avg_score': 0.0, 'headlines_count': 0}
+        scores = []
         for headline in headlines:
-            lower = headline.lower()
-            pos_count += sum(1 for w in self.POSITIVE_WORDS if w in lower)
-            neg_count += sum(1 for w in self.NEGATIVE_WORDS if w in lower)
-
-        total = pos_count + neg_count
-        if total == 0:
-            return 'NEUTRAL', {'positive': 0, 'negative': 0, 'total': 0}
-
-        # Sentiment is POSITIVE if more positive words found, else NEGATIVE
-        sentiment = 'NEUTRAL'
-        if pos_count > neg_count * 1.2:  # 20% more positive
+            vs = self.analyser.polarity_scores(headline)
+            scores.append(vs['compound'])  # compound = -1 to +1
+        avg_score = sum(scores) / len(scores)
+        # VADER thresholds: > 0.05 = positive, < -0.05 = negative
+        if avg_score > 0.05:
             sentiment = 'POSITIVE'
-        elif neg_count > pos_count * 1.2:
+        elif avg_score < -0.05:
             sentiment = 'NEGATIVE'
-
-        return sentiment, {'positive': pos_count, 'negative': neg_count, 'total': total}
+        else:
+            sentiment = 'NEUTRAL'
+        return sentiment, {
+            'avg_score': round(avg_score, 3),
+            'headlines_count': len(headlines),
+            'individual_scores': scores
+        }
 
     def get_sentiment(self, symbol):
         """
@@ -85,15 +72,11 @@ class InfoRetrievalAgent:
         Returns: sentiment string ('POSITIVE', 'NEGATIVE', 'NEUTRAL')
         """
         headlines = self.get_news_headlines(symbol)
-
         if not headlines:
-            print(f'    No headlines found for {symbol} — defaulting to NEUTRAL')
+            print(f'  No headlines found for {symbol} - defaulting to NEUTRAL')
             return 'NEUTRAL'
-
         sentiment, scores = self.score_sentiment(headlines)
-
-        print(f'    News sentiment for {symbol}: {sentiment} '
-              f'(+{scores["positive"]} / -{scores["negative"]} words, '
-              f'{len(headlines)} headlines)')
-
+        print(f'  News sentiment for {symbol}: {sentiment} '
+              f'(VADER score: {scores["avg_score"]:+.3f}, '
+              f'{scores["headlines_count"]} headlines)')
         return sentiment
