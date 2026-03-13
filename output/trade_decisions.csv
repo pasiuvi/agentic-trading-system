@@ -1,4 +1,6 @@
 timestamp,symbol,close_price,market_signal,market_conf,rsi,sentiment,decision,final_action,final_conf,risk_approved,risk_reason,trade_size_usd,reasoning
-2026-03-13 18:52:46,AAPL,255.75999450683597,SELL,0.6,39.79,NEUTRAL,SELL,SELL,0.6,True,All risk checks passed,0.0,MACD below signal (bearish) | MA20 > MA50 (uptrend) | Neutral news — no sentiment adjustment
-2026-03-13 18:52:58,MSFT,401.8599853515625,BUY,0.6,42.89,POSITIVE,BUY,BUY,0.72,True,All risk checks passed,10000.0,MACD above signal (bullish) | MA20 < MA50 (downtrend) | Positive news boosts BUY confidence
-2026-03-13 18:53:09,BTC-USD,73233.6015625,BUY,0.55,57.99,POSITIVE,BUY,BUY,0.67,True,All risk checks passed,10000.0,MACD above signal (bullish) | MA20 < MA50 (downtrend) | High volatility (0.032) — caution | Positive news boosts BUY confidence
+2026-03-13 23:42:14,AAPL,251.02999877929688,SELL,0.6,35.33,NEUTRAL,SELL,SELL,0.6,True,All risk checks passed,0.0,MACD below signal (bearish) | MA20 > MA50 (uptrend) | Neutral news - no sentiment adjustment
+2026-03-13 23:42:26,MSFT,396.9100036621094,BUY,0.6,39.72,NEUTRAL,BUY,BUY,0.6,True,All risk checks passed,10000.0,MACD above signal (bullish) | MA20 < MA50 (downtrend) | Neutral news - no sentiment adjustment
+2026-03-13 23:42:38,GOOGL,301.510009765625,BUY,0.6,40.68,POSITIVE,BUY,BUY,0.72,True,All risk checks passed,10000.0,MACD above signal (bullish) | MA20 < MA50 (downtrend) | Positive news boosts BUY confidence
+2026-03-13 23:42:49,BTC-USD,71043.859375,BUY,0.55,53.56,POSITIVE,BUY,BUY,0.67,True,All risk checks passed,10000.0,RSI=53.6 (neutral) | MACD above signal (bullish) | MA20 < MA50 (downtrend) | High volatility (0.031) - caution | Positive news boosts BUY confidence
+2026-03-13 23:43:00,ETH-USD,2102.4365234375,BUY,0.55,53.04,POSITIVE,BUY,BUY,0.67,True,All risk checks passed,10000.0,RSI=53.0 (neutral) | MACD above signal (bullish) | MA20 < MA50 (downtrend) | High volatility (0.040) - caution | Positive news boosts BUY confidence
