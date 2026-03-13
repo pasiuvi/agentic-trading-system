@@ -76,8 +76,8 @@ def add_indicators(df):
     df['Volatility'] = df['Daily_Return'].rolling(window=20).std()
     # Buy/Sell Signals: Rule-based (also used as ML labels)
     df['Signal'] = 0  # 0 = HOLD
-    df.loc[(df['RSI'] < 30) & (df['Close'] > df['MA_50']), 'Signal'] = 1   # BUY
-    df.loc[(df['RSI'] > 70) & (df['Close'] < df['MA_50']), 'Signal'] = -1  # SELL
+    df.loc[(df['RSI'] < 45) & (df['Close'] > df['MA_50']), 'Signal'] = 1   # BUY
+    df.loc[(df['RSI'] > 55) & (df['Close'] < df['MA_50']), 'Signal'] = -1  # SELL
     # Remove rows where indicators couldn't be calculated yet
     df.dropna(subset=['MA_50', 'RSI', 'MACD'], inplace=True)
     df.reset_index(drop=True, inplace=True)
