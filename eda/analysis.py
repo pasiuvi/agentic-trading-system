@@ -149,12 +149,14 @@ def correlation_analysis(symbols):
         aapl_ret = returns['AAPL']
         btc_ret  = returns['BTC-USD']
         rolling_corr = aapl_ret.rolling(30).corr(btc_ret)
-        axes[1].plot(rolling_corr.index, rolling_corr.values, color='#2E75B6', linewidth=1.5)
+        rc_vals = rolling_corr.values.astype(float)
+        rc_idx = range(len(rc_vals))
+        axes[1].plot(rc_idx, rc_vals, color='#2E75B6', linewidth=1.5)
         axes[1].axhline(0, color='black', linestyle='--', alpha=0.5)
-        axes[1].fill_between(rolling_corr.index, rolling_corr.values, 0,
-                             where=(rolling_corr.values > 0), alpha=0.2, color='green')
-        axes[1].fill_between(rolling_corr.index, rolling_corr.values, 0,
-                             where=(rolling_corr.values < 0), alpha=0.2, color='red')
+        axes[1].fill_between(rc_idx, rc_vals, 0,
+                     where=(rc_vals > 0), alpha=0.2, color='green')
+        axes[1].fill_between(rc_idx, rc_vals, 0,
+                     where=(rc_vals < 0), alpha=0.2, color='red')
         axes[1].set_title('30-Day Rolling Correlation: AAPL vs BTC', fontsize=13, fontweight='bold')
         axes[1].set_ylabel('Correlation')
         axes[1].grid(alpha=0.3)
