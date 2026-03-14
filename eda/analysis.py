@@ -76,8 +76,8 @@ def add_indicators(df):
     df['Volatility'] = df['Daily_Return'].rolling(window=20).std()
     # Buy/Sell Signals: Rule-based (also used as ML labels)
     df['Signal'] = 0  # 0 = HOLD
-    df.loc[(df['RSI'] < 45) & (df['Close'] > df['MA_50']), 'Signal'] = 1   # BUY
-    df.loc[(df['RSI'] > 55) & (df['Close'] < df['MA_50']), 'Signal'] = -1  # SELL
+    df.loc[df['RSI'] < 40, 'Signal'] = 1   # BUY
+    df.loc[df['RSI'] > 60, 'Signal'] = -1  # SELL
     # Remove rows where indicators couldn't be calculated yet
     df.dropna(subset=['MA_50', 'RSI', 'MACD'], inplace=True)
     df.reset_index(drop=True, inplace=True)
@@ -135,7 +135,7 @@ def correlation_analysis(symbols):
     # Combine all Close prices into one DataFrame
     combined = pd.DataFrame(closes)
     # Calculate daily returns for correlation (more meaningful than raw prices)
-    returns = combined.pct_change().dropna()
+    returns = combined.pct_change(fill_method=None).dropna()
     corr_matrix = returns.corr()
     # Plot heatmap
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
