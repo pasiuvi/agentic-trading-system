@@ -89,3 +89,12 @@ def run_pipeline():
 
 if __name__ == '__main__':
     run_pipeline()
+    print("\n📄 Generating PDF report...")
+    import subprocess
+    result = subprocess.run(["python", "generate_report.py"], capture_output=False)
+    if result.returncode == 0:
+        print("✅ PDF report saved to output/trading_report.pdf")
+    else:
+        print("⚠️  Run python generate_report.py manually")
+
+
