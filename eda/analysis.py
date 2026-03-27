@@ -118,57 +118,101 @@ def plot_analysis(df, symbol):
     plt.close()
     print(f'  Chart saved: {save_path}')
 
-# ── NEW: Correlation Analysis ──────────────────────────────────────────────
+# ── Correlation Analysis ───────────────────────────────────────────────────
 def correlation_analysis(symbols):
     """
     Creates a heatmap showing how correlated all assets are with each other.
     High correlation (near 1.0) means assets move together.
     Low or negative correlation means they move differently (good for diversification).
+
+    FIX: Stocks (Mon-Fri) and crypto (7 days) have different trading calendars.
+    We align on date-only index, then forward-fill + backward-fill gaps so the
+    combined DataFrame has no NaN rows before computing pct_change().
     """
     print('\n  Running correlation analysis...')
     closes = {}
     for symbol in symbols:
         df = load_data(symbol)
         if df is not None:
-            df['Date'] = pd.to_datetime(df['Date'], utc=True, errors='coerce')
-            closes[symbol] = df.set_index('Date')['Close']
-    # Combine all Close prices into one DataFrame
-    combined = pd.DataFrame(closes)
-    # Calculate daily returns for correlation (more meaningful than raw prices)
+            # ── FIX: strip timezone and keep date only so all assets align ──
+            df['DateOnly'] = df['Date'].dt.normalize().dt.tz_localize(None)
+            series = df.set_index('DateOnly')['Close']
+            # Remove duplicate dates (keep last)
+            series = series[~series.index.duplicated(keep='last')]
+            closes[symbol] = series
+
+    # ── FIX: build combined on a full date range covering all assets ────────
+    # Use the union of all dates (stocks Mon-Fri + crypto every day)
+    all_dates = sorted(set().union(*[s.index for s in closes.values()]))
+    combined = pd.DataFrame(index=all_dates)
+    for symbol, series in closes.items():
+        combined[symbol] = series
+
+    # ── FIX: fill gaps caused by calendar mismatch ──────────────────────────
+    # ffill: carry last known price into weekends/holidays
+    # bfill: fill any leading NaNs at the start of shorter series
+    combined = combined.ffill().bfill()
+
+    # Drop any remaining all-NaN rows (should be none after bfill)
+    combined.dropna(how='all', inplace=True)
+
+    # ── Compute daily returns on the aligned, gap-filled data ───────────────
     returns = combined.pct_change(fill_method=None).dropna()
-    corr_matrix = returns.corr()
-    # Plot heatmap
+
+    # Compute correlation matrix; fillna(0) handles edge cases
+    corr_matrix = returns.corr().fillna(0)
+
+    print('  Correlation matrix:')
+    print(corr_matrix.to_string())
+
+    # ── Plot ─────────────────────────────────────────────────────────────────
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    # Left: price correlation
-    sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm',
-                center=0, vmin=-1, vmax=1, ax=axes[0],
-                annot_kws={'size': 11})
+
+    # Left: correlation heatmap with values annotated
+    sns.heatmap(
+        corr_matrix,
+        annot=True,
+        fmt='.2f',
+        cmap='RdYlBu_r',
+        center=0,
+        vmin=-1,
+        vmax=1,
+        ax=axes[0],
+        annot_kws={'size': 11},
+        linewidths=0.5,
+        linecolor='white'
+    )
     axes[0].set_title('Daily Returns Correlation Matrix', fontsize=13, fontweight='bold')
-    # Right: rolling correlation between AAPL and BTC-USD (if available)
-    if 'AAPL' in closes and 'BTC-USD' in closes:
-        aapl_ret = returns['AAPL']
-        btc_ret  = returns['BTC-USD']
-        rolling_corr = aapl_ret.rolling(30).corr(btc_ret)
+    axes[0].tick_params(axis='x', rotation=30)
+    axes[0].tick_params(axis='y', rotation=0)
+
+    # Right: 30-day rolling correlation AAPL vs BTC-USD
+    if 'AAPL' in returns.columns and 'BTC-USD' in returns.columns:
+        rolling_corr = returns['AAPL'].rolling(30).corr(returns['BTC-USD'])
         rc_vals = rolling_corr.values.astype(float)
-        rc_idx = range(len(rc_vals))
+        rc_idx  = range(len(rc_vals))
+
         axes[1].plot(rc_idx, rc_vals, color='#2E75B6', linewidth=1.5)
         axes[1].axhline(0, color='black', linestyle='--', alpha=0.5)
         axes[1].fill_between(rc_idx, rc_vals, 0,
-                     where=(rc_vals > 0), alpha=0.2, color='green')
+                             where=(rc_vals > 0), alpha=0.2, color='green')
         axes[1].fill_between(rc_idx, rc_vals, 0,
-                     where=(rc_vals < 0), alpha=0.2, color='red')
+                             where=(rc_vals < 0), alpha=0.2, color='red')
         axes[1].set_title('30-Day Rolling Correlation: AAPL vs BTC', fontsize=13, fontweight='bold')
         axes[1].set_ylabel('Correlation')
+        axes[1].set_xlabel('Trading Days')
         axes[1].grid(alpha=0.3)
+    else:
+        axes[1].text(0.5, 0.5, 'AAPL or BTC-USD data not available',
+                     ha='center', va='center', transform=axes[1].transAxes)
+
     plt.tight_layout()
     plt.savefig('output/correlation_analysis.png', dpi=120, bbox_inches='tight')
     plt.close()
     print('  Correlation heatmap saved: output/correlation_analysis.png')
-    print('  Correlation summary:')
-    print(corr_matrix.to_string())
     return corr_matrix
 
-# ── NEW: Volatility Analysis ───────────────────────────────────────────────
+# ── Volatility Analysis ────────────────────────────────────────────────────
 def volatility_analysis(symbols):
     """
     Compares volatility across all assets.
@@ -216,7 +260,7 @@ def volatility_analysis(symbols):
         print(f'    {s:<12} VaR = {v}% per day')
     return var_results
 
-# ── NEW: ML Model ─────────────────────────────────────────────────────────
+# ── ML Model ──────────────────────────────────────────────────────────────
 def train_ml_model(df, symbol):
     """
     Trains a Random Forest classifier to predict BUY/SELL/HOLD signals.
@@ -303,8 +347,8 @@ if __name__ == '__main__':
             df = add_indicators(df)
             descriptive_stats(df, symbol)
             plot_analysis(df, symbol)
-            train_ml_model(df, symbol)  # NEW: ML model per asset
-    # NEW: Cross-asset analysis
+            train_ml_model(df, symbol)
+    # Cross-asset analysis
     correlation_analysis(SYMBOLS)
     volatility_analysis(SYMBOLS)
     cluster_assets(SYMBOLS)
